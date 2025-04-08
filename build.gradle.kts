@@ -9,6 +9,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.openjfx:javafx-controls:17.0.2")
     implementation("org.postgresql:postgresql:42.5.0")
 }
 
@@ -19,4 +20,16 @@ javafx {
 
 application {
     mainClass.set("MainKt")
+}
+
+/*java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}*/
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
 }

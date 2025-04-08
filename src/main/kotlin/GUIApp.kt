@@ -2,117 +2,162 @@ import javafx.application.Application
 import javafx.geometry.Insets
 import javafx.scene.Scene
 import javafx.scene.control.*
-import javafx.scene.layout.VBox
+import javafx.scene.layout.*
 import javafx.stage.Stage
 
 class GUIApp : Application() {
+    override fun start(primaryStage: Stage) {
+        val tablaCombo = ComboBox<String>()
+        tablaCombo.items.addAll("clientes", "productos")
+        tablaCombo.value = "clientes"
 
-    private var currentOffset = 0 // Para paginar la lista de clientes
+        val operacionCombo = ComboBox<String>()
+        operacionCombo.items.addAll("Insertar", "Actualizar", "Eliminar", "Listar")
+        operacionCombo.value = "Listar"
 
-    override fun start(stage: Stage) {
-        val operationSelector = ComboBox<String>()
-        operationSelector.items.addAll("Insertar", "Actualizar", "Eliminar", "Listar")
-        operationSelector.value = "Insertar"
+        val outputArea = TextArea().apply {
+            isEditable = false
+            prefRowCount = 15
+        }
 
-        // Campos reutilizables
-        val idField = TextField().apply { promptText = "ID Cliente" }
-        val firstNameField = TextField().apply { promptText = "Nombre" }
-        val lastNameField = TextField().apply { promptText = "Apellido" }
-        val emailField = TextField().apply { promptText = "Email" }
-        val newEmailField = TextField().apply { promptText = "Nuevo Email" }
+        val inputFields = VBox(10.0).apply {
+            padding = Insets(10.0)
+        }
 
-        val output = Label()
-        val executeButton = Button("Ejecutar operación")
+        fun actualizarFormulario() {
+            inputFields.children.clear()
+            when (tablaCombo.value to operacionCombo.value) {
+                "clientes" to "Insertar" -> {
+                    inputFields.children.addAll(
+                        Label("num_clie"), TextField().apply { id = "num_clie" },
+                        Label("empresa"), TextField().apply { id = "empresa" },
+                        Label("rep_clie"), TextField().apply { id = "rep_clie" },
+                        Label("limite_credito"), TextField().apply { id = "limite_credito" }
+                    )
+                }
 
-        val container = VBox(10.0)
-        container.padding = Insets(20.0)
+                "clientes" to "Actualizar" -> {
+                    inputFields.children.addAll(
+                        Label("num_clie"), TextField().apply { id = "num_clie" },
+                        Label("nuevo limite_credito"), TextField().apply { id = "limite_credito" }
+                    )
+                }
 
-        // Función para actualizar los campos visibles según la operación
-        fun updateForm(selected: String) {
-            container.children.setAll(operationSelector)
-            when (selected) {
-                "Insertar" -> container.children.addAll(firstNameField, lastNameField, emailField, executeButton, output)
-                "Actualizar" -> container.children.addAll(idField, newEmailField, executeButton, output)
-                "Eliminar" -> container.children.addAll(idField, executeButton, output)
-                "Listar" -> container.children.addAll(executeButton, output)
+                "clientes" to "Eliminar" -> {
+                    inputFields.children.addAll(
+                        Label("num_clie"), TextField().apply { id = "num_clie" }
+                    )
+                }
+
+                "productos" to "Insertar" -> {
+                    inputFields.children.addAll(
+                        Label("id_fab"), TextField().apply { id = "id_fab" },
+                        Label("id_producto"), TextField().apply { id = "id_producto" },
+                        Label("descripcion"), TextField().apply { id = "descripcion" },
+                        Label("precio"), TextField().apply { id = "precio" },
+                        Label("existencias"), TextField().apply { id = "existencias" }
+                    )
+                }
+
+                "productos" to "Actualizar" -> {
+                    inputFields.children.addAll(
+                        Label("id_fab"), TextField().apply { id = "id_fab" },
+                        Label("id_producto"), TextField().apply { id = "id_producto" },
+                        Label("nuevo precio"), TextField().apply { id = "precio" }
+                    )
+                }
+
+                "productos" to "Eliminar" -> {
+                    inputFields.children.addAll(
+                        Label("id_fab"), TextField().apply { id = "id_fab" },
+                        Label("id_producto"), TextField().apply { id = "id_producto" }
+                    )
+                }
+
+                else -> {
+                    // Listar no necesita campos
+                }
             }
         }
 
-        // Acción del botón
-        executeButton.setOnAction {
-            when (operationSelector.value) {
-                "Insertar" -> {
-                    if (firstNameField.text.isNotBlank() && lastNameField.text.isNotBlank() && emailField.text.isNotBlank()) {
-                        insertCustomer(firstNameField.text, lastNameField.text, emailField.text)
-                        output.text = "✅ Cliente insertado correctamente."
-                        firstNameField.clear(); lastNameField.clear(); emailField.clear()
-                    } else {
-                        output.text = "❌ Todos los campos son obligatorios."
-                    }
+        tablaCombo.setOnAction { actualizarFormulario() }
+        operacionCombo.setOnAction { actualizarFormulario() }
+        actualizarFormulario()
+
+        val ejecutarBtn = Button("Ejecutar").apply {
+            setOnAction {
+                val inputs = inputFields.children.filterIsInstance<TextField>().associate { it.id to it.text.trim() }
+                val tabla = tablaCombo.value
+                val operacion = operacionCombo.value
+
+                val resultado = when (tabla to operacion) {
+                    "clientes" to "Insertar" -> ClienteService.insertarCliente(
+                        inputs["num_clie"]!!.toInt(),
+                        inputs["empresa"]!!,
+                        inputs["rep_clie"]!!.toInt(),
+                        inputs["limite_credito"]!!.toDouble()
+                    ).toMensaje()
+
+                    "clientes" to "Actualizar" -> ClienteService.actualizarLimiteCredito(
+                        inputs["num_clie"]!!.toInt(),
+                        inputs["limite_credito"]!!.toDouble()
+                    ).toMensaje()
+
+                    "clientes" to "Eliminar" -> ClienteService.eliminarCliente(
+                        inputs["num_clie"]!!.toInt()
+                    ).toMensaje()
+
+                    "clientes" to "Listar" -> ClienteService.listarClientes().joinToString("\n")
+
+                    "productos" to "Insertar" -> ProductoService.insertarProducto(
+                        inputs["id_fab"]!!,
+                        inputs["id_producto"]!!,
+                        inputs["descripcion"]!!,
+                        inputs["precio"]!!.toDouble(),
+                        inputs["existencias"]!!.toInt()
+                    ).toMensaje()
+
+                    "productos" to "Actualizar" -> ProductoService.actualizarPrecioProducto(
+                        inputs["id_fab"]!!,
+                        inputs["id_producto"]!!,
+                        inputs["precio"]!!.toDouble()
+                    ).toMensaje()
+
+                    "productos" to "Eliminar" -> ProductoService.eliminarProducto(
+                        inputs["id_fab"]!!,
+                        inputs["id_producto"]!!
+                    ).toMensaje()
+
+                    "productos" to "Listar" -> ProductoService.listarProductos().joinToString("\n")
+
+                    else -> "Operación no válida"
                 }
-                "Actualizar" -> {
-                    val id = idField.text.toIntOrNull()
-                    if (id != null && newEmailField.text.isNotBlank()) {
-                        updateCustomerEmail(id, newEmailField.text)
-                        output.text = "✅ Email actualizado."
-                        idField.clear(); newEmailField.clear()
-                    } else {
-                        output.text = "❌ ID inválido o email vacío."
-                    }
-                }
-                "Eliminar" -> {
-                    val id = idField.text.toIntOrNull()
-                    if (id != null) {
-                        deleteCustomer(id)
-                        output.text = "✅ Cliente eliminado."
-                        idField.clear()
-                    } else {
-                        output.text = "❌ ID inválido."
-                    }
-                }
-                "Listar" -> {
-                    output.text = listCustomers(offset = currentOffset)
-                    currentOffset += 10
-                }
+
+                outputArea.text = resultado
             }
         }
 
-        // Cambiar formulario al cambiar operación
-        operationSelector.setOnAction {
-            updateForm(operationSelector.value)
-        }
+        val root = VBox(10.0, HBox(10.0, Label("Tabla:"), tablaCombo, Label("Operación:"), operacionCombo), inputFields, ejecutarBtn, outputArea)
+        root.padding = Insets(15.0)
+        val scene = Scene(root, 700.0, 600.0)
 
-        // Mostrar formulario inicial
-        updateForm(operationSelector.value)
-
-        // Mostrar ventana
-        stage.scene = Scene(container, 420.0, 400.0)
-        stage.title = "Gestión de Clientes (CRUD)"
-        stage.show()
+        primaryStage.title = "CRUD Clientes / Productos"
+        primaryStage.scene = scene
+        primaryStage.show()
     }
 
-    // Mostrar hasta 10 clientes en texto plano
-    private fun listCustomers(offset: Int = 0): String {
-        val sql = "SELECT customerid, firstname, lastname, email FROM customers ORDER BY customerid ASC LIMIT 10 OFFSET $offset"
-        val builder = StringBuilder("📋 Clientes:\n")
-        try {
-            Database.getConnection()?.use { conn ->
-                conn.createStatement().use { stmt ->
-                    val rs = stmt.executeQuery(sql)
-                    var found = false
-                    while (rs.next()) {
-                        found = true
-                        builder.append("${rs.getInt("customerid")} - ${rs.getString("firstname")} ${rs.getString("lastname")} (${rs.getString("email")})\n")
-                    }
-                    if (!found) {
-                        builder.append("No hay más clientes.\n")
-                        currentOffset = 0 // Reiniciar si ya no hay más
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            return "❌ Error al consultar clientes: ${e.message}"
-        }
-        return builder.toString()
-    }
+    private fun Boolean.toMensaje() = if (this) "Operación exitosa" else "Ocurrió un error"
+ /*   // Tabs para separar Clientes y Productos
+    val tabClientes = Tab("Clientes", container)
+    val tabProductos = Tab("Productos", productContainer)
+    val tabPane = TabPane(tabClientes, tabProductos)
+
+    val root = VBox(tabPane)
+    stage.scene = Scene(root, 500.0, 500.0)
+    stage.title = "Gestión CRUD - Clientes y Productos"
+    stage.show()
+
+// Inicializar formulario productos
+    updateProductForm(prodOperationSelector.value)*/
+
 }
